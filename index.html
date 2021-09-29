@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css" integrity="sha512-HK5fgLBL+xu6dm/Ii3z4xhlSUyZgTT9tuc/hSrtw6uzJOvgRr2a9jyxxT1ely+B+xFAmJKVSTbpM/CuL7qxO8w==" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href='ico/favicon.ico' rel='icon'>
+</head>
+<body>
+
+    <div class="player">
+        <!-- Dashboard -->
+        <div class="dashboard">
+          <!-- Header -->
+          <header>
+            <h4>Now playing:</h4>
+            <h2>String 57th & 9th</h2>
+          </header>
+      
+          <!-- CD -->
+          <div class="cd">
+            <div class="cd-thumb" style="background-image: url('https://i.ytimg.com/vi/jTLhQf5KJSc/maxresdefault.jpg')">
+            </div>
+          </div>
+          <!-- Time duration -->
+          <input id="progress" class="progress" type="range" value="0" step="1" min="0" max="100">
+          <div class="time">
+              <div class="time-played"></div>
+              <div class="time-duration"></div>
+            </div>
+            <!-- Control -->
+          <div class="control">
+            <div class="btn btn-repeat">
+              <i class="fas fa-redo"></i>
+            </div>
+            <div class="btn btn-prev">
+              <i class="fas fa-step-backward"></i>
+            </div>
+            <div class="btn btn-toggle-play">
+              <i class="fas fa-pause icon-pause"></i>
+              <i class="fas fa-play icon-play"></i>
+            </div>
+            <div class="btn btn-next">
+              <i class="fas fa-step-forward"></i>
+            </div>
+            <div class="btn btn-random">
+              <i class="fas fa-random"></i>
+            </div>
+          </div>
+          <!-- Volume -->
+          <div class="volume">
+            <i class="volume-icon fas fa-volume-off"></i>
+            <input class="volume-side" type="range" value="" min="0" max ="100">
+            <i class="volume-icon fas fa-volume-up"></i>
+          </div>
+      
+          
+      
+          <audio id="audio" src=""></audio>
+        </div>
+      
+        <!-- Playlist -->
+        <div class="playlist"></div>
+    </div>
+  
+<script>
+    /**
+     * 1. Render songs -ok
+     * 2. Scroll top -ok
+     * 3. Play / pause / seek -ok
+     * 4. CD rolate -> ok
+     * 5. Next / prev -> ok
+     * 6. Random -> ok
+     * 7. Next / Repeat when ended -> ok
+     * 8. Active song -> ok
+     * 9. Scroll active song into view -> ok
+     * 10. Play song when click
+     */
+
+     /**
+        1. Hạn chế tối đa các bài hát bị lặp lại
+        2. Fix lỗi khi tua bài hát, click giữ một chút sẽ thấy lỗi, vì event updatetime nó liên tục chạy dẫn tới lỗi
+        3. Fix lỗi khi next tới 1-3 bài đầu danh sách thì không “scroll into view” -> ok
+        4. Lưu lại vị trí bài hát đang nghe, F5 lại ứng dụng không bị quay trở về bài đầu tiên -> ok
+        5. Thêm chức năng điều chỉnh âm lượng, lưu vị trí âm lượng người dùng đã chọn. Mặc định 100% ->ok
+     */
+    const $ = document.querySelector.bind(document)
+    const $$ = document.querySelectorAll.bind(document)
+    
+    const player = $('.player')
+    const cd = $('.cd')
+    const playlist = $('.playlist')
+    const cdThumb = $('.cd-thumb')
+    const audio = $('#audio')
+    const heading = $('header h2')
+    const playBtn = $('.btn-toggle-play')
+    const progress = $('#progress')
+    const prev = $('.btn-prev')
+    const next = $('.btn-next')
+    const random = $('.btn-random')
+    const repeat = $('.btn-repeat')
+    const timeDuration = $('.time-duration')
+    const timePlayed = $('.time-played')
+    const volumeBtn = $('.volume-side')
+   
+
+    const app = {
+        indexSongs: [],
+        isRepeat: false,
+        isRandom: false,
+        isPlaying: false,
+        currentIndex: 0,
+        songs: [
+            {
+                name: 'Alone',
+                singer: 'Alan Walker',
+                path: './assets/song/song1.mp3',
+                image: './assets/song_image/song1.jpg'
+            },
+            {
+                name: 'Lily',
+                singer: 'Alan Walker, K-391',
+                path: './assets/song/song2.mp3',
+                image: './assets/song_image/song2.jpg'
+            },
+            {
+                name: 'Oblivion(Fred Eddy Remix)',
+                singer: 'TheFatRat, Lola Blanc',
+                path: './assets/song/song3.mp3',
+                image: './assets/song_image/song3.jpg'
+            },
+            {
+                name: 'Hâm Nóng',
+                singer: 'Emily',
+                path: './assets/song/song4.mp3',
+                image: './assets/song_image/song4.jpg'
+            },
+            {
+                name: 'Sắp 30',
+                singer: 'Trịnh Đình Quang',
+                path: './assets/song/song5.mp3',
+                image: './assets/song_image/song5.jpg'
+            },
+            {
+                name: 'Sợ Rằng Tình Lỡ',
+                singer: 'Huy Vạc',
+                path: './assets/song/song6.mp3',
+                image: './assets/song_image/song6.jpg'
+            },
+            {
+                name: 'Ngây Thơ',
+                singer: 'Tăng Duy Tân',
+                path: './assets/song/song7.mp3',
+                image: './assets/song_image/song7.jpg'
+            },
+            {
+                name: 'Cháu Xin Lỗi Chú',
+                singer: 'Linh Thộn, Gia Nghi',
+                path: './assets/song/song8.mp3',
+                image: './assets/song_image/song8.jpg'
+            },
+            {
+                name: 'Chỉ Là Không Cùng Nhau',
+                singer: 'Tăng Phúc, Trương Thảo Nhi',
+                path: './assets/song/song9.mp3',
+                image: './assets/song_image/song9.jpg'
+            }
+            
+        ],
+        defineProperties () {
+            Object.defineProperty(this, 'currentSong', {
+                get() {
+                    return this.songs[this.currentIndex]
+                }
+            })
+        },
+
+        render () {
+            const htmls = this.songs.map((song, index) => {
+                return `          
+                    <div class="song song-${index}" data-index="${index}">
+                        <div class="thumb" style="background-image: url(${song.image})">
+                        </div>
+                        <div class="body">
+                        <h3 class="title">${song.name}</h3>
+                        <p class="author">${song.singer}</p>
+                        </div>
+                        <div class="option">
+                        <i class="fas fa-ellipsis-h"></i>
+                        </div>
+                    </div>
+                `     
+            })
+            playlist.innerHTML = htmls.join('')
+        },
+
+        loadCurrentSong () {
+            cdThumb.style.backgroundImage = `url(${this.currentSong.image})`
+            heading.textContent = this.currentSong.name
+            audio.src = this.currentSong.path
+            $(`.song-${this.currentIndex}`).classList.add('active')
+            // Scroll into view
+            setTimeout(() => {
+                $('.song.active').scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                    inline: "nearest"
+                })
+            }, 300)
+            
+            
+        },
+        
+        nextSong () {
+            if (this.currentIndex === this.songs.length - 1) {
+                this.currentIndex = 0
+            } else {
+                this.currentIndex++;
+            } 
+            $('.song.active').classList.remove('active')
+            this.loadCurrentSong() 
+        },
+        prevSong () {
+            if (this.currentIndex === 0) {
+                this.currentIndex = this.songs.length - 1
+            } else {
+                this.currentIndex--;
+            }
+            $('.song.active').classList.remove('active')
+            this.loadCurrentSong()
+        },
+        randomSong () {
+            do {
+                this.currentIndex = Math.floor(Math.random()* this.songs.length)    
+            } while (this.indexSongs.includes(this.currentIndex));
+           
+            this.indexSongs.push(this.currentIndex)
+            console.log(this.indexSongs)
+            if (this.indexSongs.length === this.songs.length) {
+                this.indexSongs = []
+            }
+            $('.song.active').classList.remove('active')
+            this.loadCurrentSong()
+        },
+        convertTime (time) {
+            
+            let minutes = Math.floor(time / 60)
+            let seconds = Math.floor(time- minutes*60)
+
+            if (minutes < 10) {
+                minutes = '0' + minutes
+            }if (seconds < 10) {
+                seconds = '0' + seconds
+            }
+            return `${minutes}:${seconds}`
+        },
+        handleEvents () {
+            const _this = this
+            // Xử lý khi scroll app
+            const cdWidth = cd.offsetWidth
+            document.onscroll = function () {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop
+                const newWidth = cdWidth - scrollTop
+                cd.style.width = newWidth > 0 ? newWidth + 'px' : 0  
+                cd.style.opacity = newWidth / cdWidth
+            }
+
+            // Xử lý khi play / pause 
+            playBtn.onclick = function () {
+                if(_this.isPlaying) {
+                    audio.pause()
+                } else {
+                    audio.play()
+                }
+            }
+
+            // Khi bài hát được play
+            audio.onplay = function () {
+                _this.isPlaying = true
+                cdRotate.play()
+                player.classList.add('playing')
+            }
+            // Khi bài hát bị pause
+            audio.onpause = function () {
+                _this.isPlaying = false
+                cdRotate.pause()
+                player.classList.remove('playing')
+            }
+            // Xử lý khi tua bài hát
+            progress.oninput = function () {
+                audio.currentTime = audio.duration * this.value / 100 
+            }
+
+            audio.ontimeupdate = function () {
+                if (audio.duration) {
+                    progress.value = audio.currentTime / audio.duration * 100
+                } else {
+                    progress.value = 0
+                }
+                timePlayed.innerText = _this.convertTime(audio.currentTime)
+            }
+            // Xử lý khi next / prev bài hát
+            prev.onclick = function () {
+                if (_this.isRandom) {
+                    _this.randomSong()
+                } else {
+                    _this.prevSong()
+                }
+                audio.play()
+            }
+            next.onclick = function () {
+                if (_this.isRandom) {
+                    _this.randomSong()
+                } else {
+                    _this.nextSong()
+                }
+                audio.play()
+            }
+
+            // Xử lý CD rolate
+                // animate(keyframes, options)
+                // keyframes: 1 mảng gồm các object biểu thị animation
+                // options: 1 số nguyên biểu thị thời gian hoạt ảnh (tính bằng mini giây)
+                //          hoặc 1 object gồm nhiều thuộc tính thời gian
+            const cdRotate = cdThumb.animate(
+                // keyframes
+                [
+                    {transform: 'rotate(360deg)'}                  
+                ],
+                // options
+                {
+                    duration: 8000, // thời lượng quay 1 vòng: 8s
+                    iterations: Infinity // lần lặp lại: vô cực
+                }
+                )
+            cdRotate.pause()
+            
+            // Xử lý khi random bài hát
+            random.onclick = function () {              
+                _this.isRandom = !_this.isRandom
+                random.classList.toggle('active', _this.isRandom)
+            }
+            // Khi click vào nút repeat
+            repeat.onclick = function () {
+                _this.isRepeat = !_this.isRepeat
+                repeat.classList.toggle('active', _this.isRepeat)
+            }
+            // Xử lý khi bài hát kết thúc
+            audio.onended = function () {
+                if (_this.isRepeat) {
+                    playBtn.click()
+                } else {
+                    next.click()
+                }
+            }
+            playlist.onclick = function (e) {
+                const songNode = e.target.closest('.song:not(.active)')
+                if (songNode) {
+                    _this.currentIndex = songNode.getAttribute('data-index')
+                    $('.song.active').classList.remove('active')
+                    _this.loadCurrentSong()
+                    audio.play()
+                } if(e.target.closest('.option')) {
+
+                }
+            }
+            audio.onloadedmetadata = function () {      
+                timeDuration.innerText = _this.convertTime(audio.duration)   
+            }
+
+            volumeBtn.oninput = function () {
+                audio.volume = volumeBtn.value / 100
+            }
+        },
+        
+        start() {
+            // Định nghĩa thuộc tính của object
+            this.defineProperties()
+
+            // Tải playlist vào ứng dụng khi mở app
+            this.render()
+
+            // Tải bài hát hiện tại 
+            this.loadCurrentSong()
+
+            // Xử lý sự kiện
+            this.handleEvents()
+        }
+    }
+
+    app.start()
+
+</script>
+</body>
+</html>
+
